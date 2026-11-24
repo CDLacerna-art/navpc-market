@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <!-- Minimalist Storefront Icon for NavPC Market -->
+  <rect width="48" height="48" rx="12" fill="#2563EB" />
+  <!-- Storefront awning -->
+  <path d="M12 18L14.4 12H33.6L36 18H12Z" fill="#EFF6FF" fill-opacity="0.9"/>
+  <path d="M12 18H36V21C36 22.6569 34.6569 24 33 24C31.3431 24 30 22.6569 30 21C30 22.6569 28.6569 24 27 24C25.3431 24 24 22.6569 24 21C24 22.6569 22.6569 24 21 24C19.3431 24 18 22.6569 18 21C18 22.6569 16.6569 24 15 24C13.3431 24 12 22.6569 12 21V18Z" fill="#FFFFFF"/>
+  <!-- Storefront pillar and door -->
+  <rect x="14" y="24" width="20" height="12" fill="#DBEAFE" fill-opacity="0.3"/>
+  <path d="M14 24V36H34V24" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Door entrance -->
+  <path d="M21 36V28C21 27.4477 21.4477 27 22 27H26C26.5523 27 27 27.4477 27 28V36" fill="#FFFFFF" fill-opacity="0.85"/>
+  <!-- Window accent -->
+  <rect x="16" y="27" width="3" height="4" rx="0.5" fill="#FFFFFF" fill-opacity="0.8"/>
+  <rect x="29" y="27" width="3" height="4" rx="0.5" fill="#FFFFFF" fill-opacity="0.8"/>
+</svg>
