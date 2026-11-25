@@ -25,10 +25,10 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export default function SellerAddProductPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
   const navigate = useNavigate();
 
-  const sellerId = user?.id || profile?.id || 'demo-seller-001';
+  const sellerId = isDemoMode ? 'demo-seller-001' : (user?.id ?? null);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -121,7 +121,7 @@ export default function SellerAddProductPage() {
         .map((t) => t.trim())
         .filter(Boolean);
 
-      await productService.createProduct(
+      const result = await productService.createProduct(
         {
           sellerId,
           title,
@@ -136,7 +136,15 @@ export default function SellerAddProductPage() {
         selectedFiles
       );
 
-      navigate('/seller/products');
+      if (result.rejectedFileNames && result.rejectedFileNames.length > 0) {
+        setServerError(
+          `Product published, but the following image(s) could not be uploaded: ${result.rejectedFileNames.join(', ')}. ` +
+          'You can add them from the Edit page.'
+        );
+        // Stay on page so the seller sees the warning before navigating
+      } else {
+        navigate('/seller/products');
+      }
     } catch (err) {
       console.error('Failed to create product listing:', err);
       setServerError(err.message || 'Error publishing listing. Please check your connection and inputs.');
@@ -164,6 +172,13 @@ export default function SellerAddProductPage() {
           </div>
         </div>
       </div>
+
+      {!sellerId && (
+        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center space-x-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>Your seller profile could not be loaded. Please refresh the page or sign out and sign back in.</span>
+        </div>
+      )}
 
       {serverError && (
         <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center space-x-2">

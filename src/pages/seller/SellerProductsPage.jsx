@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export default function SellerProductsPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -39,7 +39,7 @@ export default function SellerProductsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState(null);
 
-  const sellerId = user?.id || profile?.id || 'demo-seller-001';
+  const sellerId = isDemoMode ? 'demo-seller-001' : (user?.id ?? null);
 
   const loadProducts = async () => {
     try {
@@ -128,6 +128,13 @@ export default function SellerProductsPage() {
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center space-x-2">
           <Check className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{actionSuccess}</span>
+        </div>
+      )}
+
+      {!sellerId && (
+        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center space-x-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>Your seller profile could not be loaded. Please refresh the page or sign out and sign back in.</span>
         </div>
       )}
 

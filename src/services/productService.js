@@ -125,6 +125,7 @@ export const productService = {
 
       // 2. Upload images if provided
       const uploadedImages = [];
+      const rejectedFileNames = [];
       if (imageFiles && imageFiles.length > 0) {
         for (let i = 0; i < imageFiles.length; i++) {
           const file = imageFiles[i];
@@ -142,6 +143,7 @@ export const productService = {
 
             if (uploadError) {
               console.warn('Storage upload error for file:', file.name, uploadError.message);
+              rejectedFileNames.push(file.name);
               continue;
             }
 
@@ -164,6 +166,7 @@ export const productService = {
             if (imgRecord) uploadedImages.push(imgRecord);
           } catch (uploadErr) {
             console.error('Failed uploading image:', uploadErr);
+            rejectedFileNames.push(file.name);
           }
         }
       }
@@ -171,6 +174,7 @@ export const productService = {
       return {
         ...newProduct,
         product_images: uploadedImages,
+        rejectedFileNames,
       };
     }
 
@@ -273,6 +277,7 @@ export const productService = {
       }
 
       // Upload new images
+      const rejectedFileNames = [];
       if (newImageFiles && newImageFiles.length > 0) {
         for (let i = 0; i < newImageFiles.length; i++) {
           const file = newImageFiles[i];
@@ -284,7 +289,10 @@ export const productService = {
             .from('product-images')
             .upload(storagePath, file, { cacheControl: '3600', upsert: false });
 
-          if (!uploadError) {
+          if (uploadError) {
+            console.warn('Storage upload error for file:', file.name, uploadError.message);
+            rejectedFileNames.push(file.name);
+          } else {
             const { data: { publicUrl } } = supabase.storage
               .from('product-images')
               .getPublicUrl(storagePath);
@@ -299,7 +307,7 @@ export const productService = {
         }
       }
 
-      return updatedProd;
+      return { ...updatedProd, rejectedFileNames };
     }
 
     // Local / Demo Mode update

@@ -23,12 +23,12 @@ import {
 } from 'lucide-react';
 
 export default function SellerOverviewPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const sellerId = user?.id || profile?.id || 'demo-seller-001';
+  const sellerId = isDemoMode ? 'demo-seller-001' : (user?.id ?? null);
 
   useEffect(() => {
     async function loadData() {
@@ -54,6 +54,20 @@ export default function SellerOverviewPage() {
       <div className="flex flex-col items-center justify-center py-20 space-y-3">
         <Spinner size="lg" />
         <p className="text-xs text-content-muted">Loading your seller metrics...</p>
+      </div>
+    );
+  }
+
+  if (!sellerId) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-3 text-center px-4">
+        <div className="w-12 h-12 mx-auto rounded-full bg-rose-50 flex items-center justify-center">
+          <XCircle className="w-6 h-6 text-rose-500" />
+        </div>
+        <h3 className="text-sm font-bold text-content-heading">Seller Profile Unavailable</h3>
+        <p className="text-xs text-content-muted max-w-sm">
+          Your seller profile could not be loaded. Please refresh the page or sign out and sign back in.
+        </p>
       </div>
     );
   }

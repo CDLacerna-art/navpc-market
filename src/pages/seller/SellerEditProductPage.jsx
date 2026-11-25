@@ -24,10 +24,10 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export default function SellerEditProductPage() {
   const { id } = useParams();
-  const { user, profile } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
   const navigate = useNavigate();
 
-  const sellerId = user?.id || profile?.id || 'demo-seller-001';
+  const sellerId = isDemoMode ? 'demo-seller-001' : (user?.id ?? null);
 
   // Form states
   const [loading, setLoading] = useState(true);
@@ -151,7 +151,7 @@ export default function SellerEditProductPage() {
       setIsSubmitting(true);
       setServerError(null);
 
-      await productService.updateProduct(
+      const result = await productService.updateProduct(
         id,
         sellerId,
         {
@@ -168,7 +168,15 @@ export default function SellerEditProductPage() {
         removedImageIds
       );
 
-      navigate('/seller/products');
+      if (result.rejectedFileNames && result.rejectedFileNames.length > 0) {
+        setServerError(
+          `Changes saved, but the following image(s) could not be uploaded: ${result.rejectedFileNames.join(', ')}. ` +
+          'Please try uploading them again.'
+        );
+        // Stay on page so the seller can retry the failed images
+      } else {
+        navigate('/seller/products');
+      }
     } catch (err) {
       console.error('Failed to update product:', err);
       setServerError(err.message || 'Error updating product.');
@@ -201,6 +209,13 @@ export default function SellerEditProductPage() {
           <p className="text-xs text-content-muted">Update details, pricing, stock, or photos for your item.</p>
         </div>
       </div>
+
+      {!sellerId && (
+        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center space-x-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>Your seller profile could not be loaded. Please refresh the page or sign out and sign back in.</span>
+        </div>
+      )}
 
       {serverError && (
         <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center space-x-2">
