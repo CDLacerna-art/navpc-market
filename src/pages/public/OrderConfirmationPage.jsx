@@ -221,6 +221,10 @@ export default function OrderConfirmationPage() {
                   <img
                     src={item.image}
                     alt={item.title}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/images/products/scientific-calculator.jpg';
+                    }}
                     className="w-12 h-12 rounded-xl object-cover bg-slate-100 border border-surface-border shrink-0"
                   />
                   <div className="min-w-0">

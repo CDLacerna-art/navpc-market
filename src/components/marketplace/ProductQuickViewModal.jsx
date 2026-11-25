@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
 import InitialsAvatar from '../common/InitialsAvatar';
+import CategoryPlaceholder from './CategoryPlaceholder';
 import { formatPHP } from '../../utils/currency';
 import { useCart } from '../../context/CartContext';
 import {
@@ -36,6 +37,7 @@ export default function ProductQuickViewModal({
 
   if (!product) return null;
 
+  const [imgError, setImgError] = useState(false);
   const isOutOfStock = product.stock === 0;
   const isDigital = product.condition === 'Digital / Service';
 
@@ -72,11 +74,19 @@ export default function ProductQuickViewModal({
           {/* Left Column: Image and Badges */}
           <div className="space-y-3">
             <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 border border-surface-border">
-              <img
-                src={product.image}
-                alt={product.title}
-                className={`w-full h-full object-cover ${isOutOfStock ? 'grayscale opacity-75' : ''}`}
-              />
+              {imgError ? (
+                <CategoryPlaceholder
+                  categorySlug={product.categorySlug}
+                  categoryName={product.category}
+                />
+              ) : (
+                <img
+                  src={product.image}
+                  alt={product.title}
+                  onError={() => setImgError(true)}
+                  className={`w-full h-full object-cover ${isOutOfStock ? 'grayscale opacity-75' : ''}`}
+                />
+              )}
               <div className="absolute top-3 left-3 flex flex-col gap-1.5">
                 <Badge variant="primary" size="md">
                   {product.condition}

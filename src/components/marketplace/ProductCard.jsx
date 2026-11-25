@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import Card from '../common/Card';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
+import InitialsAvatar from '../common/InitialsAvatar';
+import CategoryPlaceholder from './CategoryPlaceholder';
 import { formatPHP } from '../../utils/currency';
 import { useCart } from '../../context/CartContext';
 import { ShoppingCart, Eye, Star, MapPin, Ban } from 'lucide-react';
@@ -31,25 +33,34 @@ export default function ProductCard({
   return (
     <Card padding={false} hoverable className="group flex flex-col h-full overflow-hidden">
       {/* Image Container with Badges */}
-      <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
-        {/* Placeholder skeleton before load */}
-        {!imageLoaded && !imageError && (
-          <div className="absolute inset-0 bg-slate-200 animate-pulse" />
-        )}
+      <div className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden shrink-0">
+        {imageError ? (
+          <CategoryPlaceholder
+            categorySlug={product.categorySlug}
+            categoryName={product.category}
+          />
+        ) : (
+          <>
+            {/* Placeholder skeleton before load */}
+            {!imageLoaded && (
+              <div className="absolute inset-0 bg-slate-200 animate-pulse" />
+            )}
 
-        <img
-          src={imageError ? 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80' : product.image}
-          alt={product.title}
-          loading="lazy"
-          onLoad={() => setImageLoaded(true)}
-          onError={() => {
-            setImageError(true);
-            setImageLoaded(true);
-          }}
-          className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${
-            isOutOfStock ? 'grayscale opacity-75' : ''
-          } ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-        />
+            <img
+              src={product.image}
+              alt={product.title}
+              loading="lazy"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => {
+                setImageError(true);
+                setImageLoaded(true);
+              }}
+              className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${
+                isOutOfStock ? 'grayscale opacity-75' : ''
+              } ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          </>
+        )}
 
         {/* Floating Condition & Stock Badges */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
@@ -85,14 +96,14 @@ export default function ProductCard({
       <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
         <div>
           {/* Category & Rating */}
-          <div className="flex items-center justify-between text-[11px] text-content-muted mb-1">
-            <span className="font-semibold text-brand-blue uppercase tracking-wider truncate mr-1">
+          <div className="flex items-start justify-between text-[11px] text-content-muted mb-1 gap-2">
+            <span className="font-semibold text-brand-blue uppercase tracking-wider text-[10px] leading-tight">
               {product.category}
             </span>
-            <div className="flex items-center gap-1 font-medium text-amber-600 shrink-0" title="Sample demonstration rating">
+            <div className="flex items-center gap-1 font-medium text-amber-600 shrink-0 text-[10px]" title="Sample demonstration rating">
               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
               <span>{product.rating.toFixed(1)}</span>
-              <span className="text-[10px] text-content-subtle font-normal">({product.reviewsCount} sample)</span>
+              <span className="text-[10px] text-content-subtle font-normal">({product.reviewsCount})</span>
             </div>
           </div>
 
@@ -105,10 +116,10 @@ export default function ProductCard({
 
           {/* Seller Snapshot */}
           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-surface-border/60">
-            <img
-              src={product.seller.avatar}
-              alt={product.seller.name}
-              className="w-5 h-5 rounded-full object-cover ring-1 ring-surface-border"
+            <InitialsAvatar
+              name={product.seller.name}
+              size="xs"
+              className="ring-1 ring-surface-border"
             />
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-medium text-content-heading truncate leading-tight">

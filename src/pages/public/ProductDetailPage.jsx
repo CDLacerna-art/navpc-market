@@ -7,6 +7,7 @@ import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import Card from '../../components/common/Card';
 import InitialsAvatar from '../../components/common/InitialsAvatar';
+import CategoryPlaceholder from '../../components/marketplace/CategoryPlaceholder';
 import ProductCard from '../../components/marketplace/ProductCard';
 import ProductQuickViewModal from '../../components/marketplace/ProductQuickViewModal';
 import {
@@ -33,6 +34,7 @@ export default function ProductDetailPage() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [imgError, setImgError] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -40,6 +42,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setQuantity(1);
+    setImgError(false);
   }, [productId]);
 
   // Find product from demo catalog
@@ -155,13 +158,21 @@ export default function ProductDetailPage() {
         {/* Left Column: Product Image Gallery (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-surface-border shadow-card">
-            <img
-              src={product.image}
-              alt={product.title}
-              className={`w-full h-full object-cover transition-transform duration-300 ${
-                isOutOfStock ? 'grayscale opacity-75' : ''
-              }`}
-            />
+            {imgError ? (
+              <CategoryPlaceholder
+                categorySlug={product.categorySlug}
+                categoryName={product.category}
+              />
+            ) : (
+              <img
+                src={product.image}
+                alt={product.title}
+                onError={() => setImgError(true)}
+                className={`w-full h-full object-cover transition-transform duration-300 ${
+                  isOutOfStock ? 'grayscale opacity-75' : ''
+                }`}
+              />
+            )}
 
             {/* Badges Overlay */}
             <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">

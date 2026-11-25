@@ -97,6 +97,10 @@ export default function CartPage() {
                         <img
                           src={product.image}
                           alt={product.title}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/images/products/scientific-calculator.jpg';
+                          }}
                           className="w-full h-full object-cover"
                         />
                       </Link>

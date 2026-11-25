@@ -49,19 +49,30 @@ export default function CheckoutPage() {
     }
   }, [cartItems, navigate]);
 
-  // Form State — empty fields with gray placeholder text
+  // Form State — prefill name and email if signed-in profile exists, otherwise empty
   const [formData, setFormData] = useState({
-    fullName: '',
+    fullName: profile?.full_name || '',
     studentId: '',
     contactNumber: '',
     collegeProgram: '',
-    email: '',
+    email: profile?.email || '',
     meetupLocation: CAMPUS_MEETUP_SPOTS[0],
     customLocation: '',
     meetupSchedule: MEETUP_TIME_WINDOWS[1],
     paymentMethod: 'Cash on Campus Meetup',
     notes: '',
   });
+
+  // Keep prefill in sync when auth state finishes loading
+  useEffect(() => {
+    if (profile) {
+      setFormData((prev) => ({
+        ...prev,
+        fullName: prev.fullName || profile.full_name || '',
+        email: prev.email || profile.email || '',
+      }));
+    }
+  }, [profile]);
 
   const [errors, setErrors] = useState({});
 
@@ -483,6 +494,10 @@ export default function CheckoutPage() {
                     <img
                       src={item.product.image}
                       alt={item.product.title}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/images/products/scientific-calculator.jpg';
+                      }}
                       className="w-10 h-10 rounded-lg object-cover bg-slate-100 border border-surface-border shrink-0"
                     />
                     <div className="min-w-0">

@@ -2,12 +2,21 @@ import React from 'react';
 
 /**
  * Returns initials from a full name (e.g., "Juan Dela Cruz" -> "JD", "Maria Santos" -> "MS")
+ * Handles Philippine and Spanish naming patterns with particles (e.g., "Dela", "De", "Del", "Van", "Von")
  */
 export function getInitials(name = '') {
   if (!name) return '??';
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  // Strip honorifics like Engr., Dr., Prof.
+  const cleaned = name.replace(/^(engr\.|dr\.|prof\.|mr\.|ms\.|mrs\.)\s+/i, '').trim();
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '??';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+
+  const firstInitial = parts[0][0].toUpperCase();
+  // If the second token is Dela / De / Del, the middle or maternal/paternal initial is D (e.g. Juan Dela Cruz -> JD)
+  const secondInitial = parts[1][0].toUpperCase();
+
+  return (firstInitial + secondInitial).toUpperCase();
 }
 
 /**

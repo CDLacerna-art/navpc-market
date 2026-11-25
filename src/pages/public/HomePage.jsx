@@ -205,10 +205,14 @@ export default function HomePage() {
                   </div>
 
                   {/* Spotlight Image & Badge */}
-                  <div className="relative aspect-16/10 rounded-xl overflow-hidden bg-slate-100 border border-surface-border">
+                  <div className="relative aspect-[16/10] rounded-xl overflow-hidden bg-slate-100 border border-surface-border">
                     <img
                       src={FEATURED_PRODUCTS[0].image}
                       alt={FEATURED_PRODUCTS[0].title}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/images/products/scientific-calculator.jpg';
+                      }}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute top-2.5 left-2.5">
