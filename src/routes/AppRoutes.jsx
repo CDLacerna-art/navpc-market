@@ -12,13 +12,24 @@ import NotFoundPage from '../pages/public/NotFoundPage';
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import BuyerDashboardPlaceholder from '../pages/buyer/BuyerDashboardPlaceholder';
-import SellerDashboardPlaceholder from '../pages/seller/SellerDashboardPlaceholder';
 import AdminDashboardPlaceholder from '../pages/admin/AdminDashboardPlaceholder';
 import { RequireAuth, RequireRole } from '../components/auth/RouteGuards';
+
+// Seller Dashboard Pages & Layout
+import SellerLayout from '../layouts/SellerLayout';
+import SellerOverviewPage from '../pages/seller/SellerOverviewPage';
+import SellerProductsPage from '../pages/seller/SellerProductsPage';
+import SellerAddProductPage from '../pages/seller/SellerAddProductPage';
+import SellerEditProductPage from '../pages/seller/SellerEditProductPage';
+import SellerInventoryPage from '../pages/seller/SellerInventoryPage';
+import SellerOrdersPage from '../pages/seller/SellerOrdersPage';
+import SellerAnalyticsPage from '../pages/seller/SellerAnalyticsPage';
+import SellerStoreSettingsPage from '../pages/seller/SellerStoreSettingsPage';
 
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* Public Pages with Standard PublicLayout (Navbar, Banner, Footer) */}
       <Route path="/" element={<PublicLayout />}>
         {/* Public Routes */}
         <Route index element={<HomePage />} />
@@ -59,16 +70,6 @@ export default function AppRoutes() {
           }
         />
 
-        {/* Protected Seller Routes (Requires Seller or Admin role) */}
-        <Route
-          path="seller/dashboard"
-          element={
-            <RequireRole allowedRoles={['seller', 'admin']} roleTitle="Student Sellers">
-              <SellerDashboardPlaceholder />
-            </RequireRole>
-          }
-        />
-
         {/* Protected Admin Routes (Requires Admin role only) */}
         <Route
           path="admin/dashboard"
@@ -81,6 +82,26 @@ export default function AppRoutes() {
 
         {/* Fallback 404 */}
         <Route path="*" element={<NotFoundPage />} />
+      </Route>
+
+      {/* Protected Seller Routes (Standalone Dedicated Seller Layout) */}
+      <Route
+        path="seller"
+        element={
+          <RequireRole allowedRoles={['seller', 'admin']} roleTitle="Student Sellers">
+            <SellerLayout />
+          </RequireRole>
+        }
+      >
+        <Route index element={<SellerOverviewPage />} />
+        <Route path="dashboard" element={<SellerOverviewPage />} />
+        <Route path="products" element={<SellerProductsPage />} />
+        <Route path="products/new" element={<SellerAddProductPage />} />
+        <Route path="products/edit/:id" element={<SellerEditProductPage />} />
+        <Route path="inventory" element={<SellerInventoryPage />} />
+        <Route path="orders" element={<SellerOrdersPage />} />
+        <Route path="analytics" element={<SellerAnalyticsPage />} />
+        <Route path="settings" element={<SellerStoreSettingsPage />} />
       </Route>
     </Routes>
   );

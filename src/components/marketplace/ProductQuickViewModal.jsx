@@ -126,11 +126,15 @@ export default function ProductQuickViewModal({
                 <span className="font-semibold text-brand-blue uppercase tracking-wider">
                   {product.category}
                 </span>
-                <div className="flex items-center gap-1 text-amber-600 font-semibold" title="Sample demonstration rating">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  <span>{product.rating.toFixed(1)}</span>
-                  <span className="text-content-subtle font-normal">({product.reviewsCount} sample reviews)</span>
-                </div>
+                {product.rating != null ? (
+                  <div className="flex items-center gap-1 text-amber-600 font-semibold" title="Sample demonstration rating">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span>{typeof product.rating === 'number' ? product.rating.toFixed(1) : product.rating}</span>
+                    <span className="text-content-subtle font-normal">({product.reviewsCount || 0} sample reviews)</span>
+                  </div>
+                ) : (
+                  <Badge variant="primary" size="xs">Live Student Listing</Badge>
+                )}
               </div>
 
               {/* Title */}

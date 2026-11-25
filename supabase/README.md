@@ -13,18 +13,20 @@ environment variables, deployment setup, and administrative commands for
 
 ---
 
-## 1. Domain Verification Required
+## 1. Institutional Email Domain
 
 The migration restricts registration to emails matching
 `@navotaspolytechniccollege.edu.ph`.
 
-> [!WARNING]
-> **Verify this domain before running the migration in a live Supabase
-> project.** The domain `navotaspolytechniccollege.edu.ph` has not been
-> confirmed as the actual operational email domain of Navotas Polytechnic
-> College. If the real institutional domain differs, update the
-> `get_allowed_email_domain()` function in the migration file before
-> executing it.
+> [!NOTE]
+> **Domain confirmed usable by students.** The domain
+> `navotaspolytechniccollege.edu.ph` has been confirmed as a domain used
+> by Navotas Polytechnic College students for institutional email, and
+> real Supabase registration and email confirmation using this domain
+> have been successfully tested. If the institutional domain ever
+> changes, update the `get_allowed_email_domain()` function in
+> `supabase/migrations/20261125_phase5_auth_and_roles.sql` before
+> re-running the migration.
 
 ---
 
@@ -160,9 +162,13 @@ END IF;
 - **`auth.uid() IS NULL` does not independently prove administrative identity:** it merely
   reflects the absence of an authenticated user token. The operation is authorized by the
   caller's PostgreSQL database connection privileges.
-- In contrast, client API requests sent with an end-user JWT supply a non-null `auth.uid()`.
-  If that user does not have `role = 'admin'` according to `public.is_admin()`, the trigger
-  blocks the update.
+- In contrast, client API requests sent with an end-user JWT supply a non-null `auth.uid()`
+  and are subject to full RLS evaluation and trigger guards.
+- **SQL Editor queries bypass RLS entirely** (they run as `postgres`, which is exempt from
+  Row Level Security). Running `SELECT`, `INSERT`, or `UPDATE` in the SQL Editor does **not**
+  prove that authenticated `buyer` or `seller` sessions are correctly restricted by RLS policies.
+  RLS restrictions for authenticated roles must be verified by running actual client API requests
+  with a real JWT token.
 - This direct database-administration context is distinct from the Supabase API `service_role`
   JWT, which is used for server-side API administration.
 
@@ -195,6 +201,55 @@ UPDATE public.profiles
 SET role = 'buyer'
 WHERE email = 'student.name@navotaspolytechniccollege.edu.ph';
 ```
+
+### Inspect Existing RLS Policies (Check for Duplicate Permissive Policies)
+
+Run in the SQL Editor to list all RLS policies on Phase 5 and Phase 6 tables.
+If multiple permissive policies exist for the same table, operation, and role, PostgreSQL
+combines them with `OR`, which may grant broader access than intended.
+
+```sql
+SELECT
+  schemaname,
+  tablename,
+  policyname,
+  roles,
+  cmd        AS operation,
+  permissive,
+  qual       AS using_expr,
+  with_check
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename IN ('profiles', 'seller_stores', 'products', 'product_images')
+ORDER BY tablename, cmd, roles;
+```
+
+### Inspect Function Ownership and SECURITY DEFINER Status
+
+Verify that `public.is_seller()`, `public.is_admin()`, and `public.handle_updated_at()`
+are owned by a trusted role (typically `postgres`) and carry the `SECURITY DEFINER` attribute.
+
+```sql
+SELECT
+  n.nspname                             AS schema,
+  p.proname                             AS function_name,
+  pg_get_userbyid(p.proowner)           AS owner,
+  CASE p.prosecdef WHEN true THEN 'SECURITY DEFINER' ELSE 'SECURITY INVOKER' END AS security,
+  p.proconfig                           AS config
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname IN ('is_seller', 'is_admin', 'handle_updated_at')
+ORDER BY p.proname;
+```
+
+Expected results:
+
+| function_name | security | config |
+|---|---|---|
+| `handle_updated_at` | `SECURITY DEFINER` | `{search_path=}` |
+| `is_admin` | `SECURITY DEFINER` | `{search_path=}` |
+| `is_seller` | `SECURITY DEFINER` | `{search_path=}` |
 
 ---
 
@@ -234,12 +289,21 @@ can be tested directly in the Supabase SQL Editor with the following standalone 
 | `/seller` and `/admin` routes blocked when not signed in | Browser (dev server, no Supabase credentials) — `RequireRole` redirects | ✅ Verified (frontend only) |
 | Navbar shows correct signed-out state | Browser (dev server, no Supabase credentials) | ✅ Verified |
 | Demo mode persona shown when `VITE_ENABLE_DEMO_MODE=true` and no Supabase config | Browser (dev server) | ✅ Verified |
-| Real Supabase signup with email confirmation | ❌ Not tested — no live Supabase credentials configured locally |
-| Real Supabase login and persistent session | ❌ Not tested |
-| Live email domain rejection in database | ❌ Not tested |
+| Real institutional email registration (`@navotaspolytechniccollege.edu.ph`) | Real Supabase project, confirmed by user | ✅ Verified |
+| Email confirmation flow | Real Supabase project confirmation email, confirmed by user | ✅ Verified |
+| Real Supabase login and persistent session | Real Supabase project, confirmed by user | ✅ Verified |
+| Buyer profile auto-created on registration | Real Supabase project — `handle_new_user()` trigger, confirmed by user | ✅ Verified |
+| New accounts receive `buyer` role | Real Supabase project, confirmed by user | ✅ Verified |
+| Live email domain rejection in database (non-institutional address) | ❌ Not tested separately — only the institutional path was confirmed |
 | Role promotion in live database | ❌ Not tested |
-| Admin-only route blocked for real `buyer` session | ❌ Not tested |
+| Admin-only route blocked for real `buyer` session | ❌ Not tested with real session — frontend `RequireRole` logic only |
 | RLS row isolation with real multi-user sessions | ❌ Not tested |
+
+> [!IMPORTANT]
+> Tests verified by the user used real Supabase credentials and a live project. The ✅ rows above
+> reflect actual live behavior, not SQL Editor simulation. SQL Editor queries run as the `postgres`
+> role with no JWT session; they bypass RLS and the `auth.uid()` trigger guard and are **not**
+> sufficient to prove authenticated buyer or seller RLS restrictions.
 
 ---
 
@@ -249,4 +313,114 @@ can be tested directly in the Supabase SQL Editor with the following standalone 
 - **Authenticated buyers and sellers:** Can read and update only their own profile row, limited strictly to the `full_name` column via column-level grant (`GRANT UPDATE (full_name)`). Direct API updates to the `role` column are prohibited at the PostgreSQL privilege level.
 - **Authenticated administrators:** Can read all profile rows via the admin RLS policy (`public.is_admin()`), and can update `full_name` on rows permitted by the policy. Authenticated admins **cannot** update the `role` column through the standard Supabase API because the `authenticated` role lacks column-level `UPDATE` permission on `role`.
 - **Role promotions & demotions:** Performed exclusively through authorized administrative SQL sessions (such as the Supabase SQL Editor under the `postgres` role). The `prevent_profile_role_update()` trigger provides defense in depth.
-- **Phase 6 Public Seller Info:** Future seller profiles will use a separate `seller_stores` table containing only public display information (store name, description, ratings) with no email field.
+- **Phase 6 Public Seller Info:** Implemented via `public.seller_stores`. Exposes only public display information (store name, description, pickup location, contact notes) with no student email field, fully protecting student privacy from anonymous scrapers.
+
+---
+
+## 10. Phase 6: Student Seller Dashboard & Storage Setup
+
+### A. Running the Phase 6 Database Migration
+
+**File:** `supabase/migrations/20261125_phase6_seller_dashboard.sql`
+
+In your Supabase project dashboard:
+1. Open the **SQL Editor**.
+2. Click **New Query**.
+3. Copy and paste the contents of `supabase/migrations/20261125_phase6_seller_dashboard.sql`.
+4. Click **Run**.
+
+This migration establishes:
+- `public.is_seller()` helper function (hardened with `SET search_path = ''`, granted strictly to `authenticated`).
+- `public.seller_stores` table for public merchant profiles without email exposure.
+- `public.products` table for catalog listings with stock/price constraints.
+- `public.product_images` table with cascade deletion.
+- Explicit table-level privileges (`REVOKE ALL FROM PUBLIC`, `GRANT SELECT TO anon`, `GRANT SELECT, INSERT, UPDATE, DELETE TO authenticated`).
+- Separate Row Level Security (RLS) policies for `anon` and `authenticated` roles.
+- Storage bucket policies for `product-images` enforcing owner folder isolation and active seller role verification.
+
+### B. Supabase Storage Configuration ('product-images')
+
+The migration includes an automated `INSERT INTO storage.buckets` statement, but verify in your dashboard:
+1. Navigate to **Storage** > **Buckets**.
+2. Confirm the bucket `product-images` exists. If not, click **New Bucket** and configure:
+   - **Name:** `product-images`
+   - **Public bucket:** `ON` (Checked — enables marketplace visitors to view photos)
+   - **Allowed MIME types:** `image/jpeg`, `image/png`, `image/webp`
+   - **Maximum file size:** `5MB`
+3. Click **Save bucket**.
+
+Storage files are organized under:
+`<seller_uuid>/<product_uuid>/<timestamp>_<filename>`
+
+RLS policies in the migration guarantee that:
+- `anon` and `authenticated` have public read access (`SELECT`) to photos in `product-images`.
+- Only authenticated sellers can upload (`INSERT`) into their own folder matching `auth.uid()`, checked against `public.is_seller()`.
+- Only the folder owner with an active seller role (or an administrator via `public.is_admin()` as an independent authorization branch) can update (`UPDATE` with `USING` + `WITH CHECK`) or delete (`DELETE`) files. Administrators are not restricted to their own folder for moderation purposes.
+
+### C. Manual Student Seller Promotion (Administrative SQL)
+
+Because all student signups receive the `buyer` role by default, promotion to `seller` must be authorized by an administrator in the Supabase SQL Editor:
+
+```sql
+-- Promote an existing student account to seller
+UPDATE public.profiles
+SET role = 'seller'
+WHERE email = 'student.name@navotaspolytechniccollege.edu.ph';
+
+-- Verify the promotion
+SELECT id, full_name, email, role 
+FROM public.profiles 
+WHERE role = 'seller';
+```
+
+### D. Table Privilege Matrix
+
+| Table | `anon` | `authenticated` | `service_role` | Notes |
+|---|---|---|---|---|
+| `public.seller_stores` | `SELECT` | `SELECT, INSERT, UPDATE, DELETE` | `ALL` | `PUBLIC` revoked; RLS filters rows |
+| `public.products` | `SELECT` | `SELECT, INSERT, UPDATE, DELETE` | `ALL` | `PUBLIC` revoked; RLS filters rows |
+| `public.product_images` | `SELECT` | `SELECT, INSERT, UPDATE, DELETE` | `ALL` | `PUBLIC` revoked; RLS filters rows |
+
+### E. Row Level Security (RLS) Policy Matrix
+
+| Table | Operation | Role | Policy Name | Enforcement Criteria |
+|---|---|---|---|---|
+| `seller_stores` | `SELECT` | `anon` | `Anon can view active seller stores` | `is_active = true` (No `is_admin()` call) |
+| `seller_stores` | `SELECT` | `authenticated` | `Authenticated can view seller stores` | `is_active = true OR id = auth.uid() OR public.is_admin()` |
+| `seller_stores` | `INSERT` | `authenticated` | `Sellers can create own store` | `id = auth.uid() AND public.is_seller()` |
+| `seller_stores` | `UPDATE` | `authenticated` | `Sellers can update own store` | `(id = auth.uid() AND public.is_seller()) OR public.is_admin()` (`USING` + `WITH CHECK`) |
+| `seller_stores` | `DELETE` | `authenticated` | `Sellers can delete own store` | `(id = auth.uid() AND public.is_seller()) OR public.is_admin()` |
+| `products` | `SELECT` | `anon` | `Anon can view active products` | `is_active = true AND is_archived = false` (No `is_admin()` call) |
+| `products` | `SELECT` | `authenticated` | `Authenticated can view visible products` | `(is_active = true AND is_archived = false) OR seller_id = auth.uid() OR public.is_admin()` |
+| `products` | `INSERT` | `authenticated` | `Sellers can create products` | `seller_id = auth.uid() AND public.is_seller()` |
+| `products` | `UPDATE` | `authenticated` | `Sellers can update own products` | `(seller_id = auth.uid() AND public.is_seller()) OR public.is_admin()` (`USING` + `WITH CHECK`) |
+| `products` | `DELETE` | `authenticated` | `Sellers can delete own products` | `(seller_id = auth.uid() AND public.is_seller()) OR public.is_admin()` |
+| `product_images` | `SELECT` | `anon` | `Anon can view public product images` | Parent product is active & unarchived (No `is_admin()` call) |
+| `product_images` | `SELECT` | `authenticated` | `Authenticated can view visible product images` | Parent product is active, owned by caller, or caller is admin |
+| `product_images` | `INSERT` | `authenticated` | `Sellers can insert product images` | Parent product `(seller_id = auth.uid() AND public.is_seller()) OR public.is_admin()` |
+| `product_images` | `UPDATE` | `authenticated` | `Sellers can update product images` | Parent product `(seller_id = auth.uid() AND public.is_seller()) OR public.is_admin()` (`USING` + `WITH CHECK`) |
+| `product_images` | `DELETE` | `authenticated` | `Sellers can delete product images` | Parent product `(seller_id = auth.uid() AND public.is_seller()) OR public.is_admin()` |
+
+### F. Storage Policy Matrix (`product-images` bucket)
+
+| Operation | Role | Policy Name | Enforcement Criteria |
+|---|---|---|---|
+| `SELECT` | `anon, authenticated` | `Public can view product images` | `bucket_id = 'product-images'` |
+| `INSERT` | `authenticated` | `Sellers can upload to own folder` | `bucket_id = 'product-images' AND (storage.foldername(name))[1] = auth.uid()::text AND public.is_seller()` |
+| `UPDATE` | `authenticated` | `Sellers can update files in own folder` | `bucket_id = 'product-images' AND (((storage.foldername(name))[1] = auth.uid()::text AND public.is_seller()) OR public.is_admin())` (`USING` + `WITH CHECK`) |
+| `DELETE` | `authenticated` | `Sellers can delete files in own folder` | `bucket_id = 'product-images' AND (((storage.foldername(name))[1] = auth.uid()::text AND public.is_seller()) OR public.is_admin())` |
+
+### G. Phase 6 RLS Test Verification Matrix
+
+| Test Case | Scenario / Query | Expected Result |
+|---|---|---|
+| **1. Buyer creating product** | Logged in as `buyer`, attempt `INSERT INTO public.products ...` | **REJECTED** (violates `public.is_seller()` in RLS `WITH CHECK`) |
+| **2. Seller creating own product** | Logged in as `seller`, `INSERT INTO public.products (seller_id, ...) VALUES (auth.uid(), ...)` | **PERMITTED** |
+| **3. Seller spoofing seller_id** | Logged in as `seller`, attempt `INSERT ... VALUES ('another-seller-uuid', ...)` | **REJECTED** (`seller_id = auth.uid()` violation) |
+| **4. Seller updating another seller's stock** | Logged in as `seller A`, attempt `UPDATE public.products SET stock = 99 WHERE seller_id = 'seller-B'` | **REJECTED** (0 rows affected / RLS blocked) |
+| **5. Demoted seller updating stock** | Former seller demoted to `buyer` attempts `UPDATE public.products ...` | **REJECTED** (violates `public.is_seller()` in `USING` + `WITH CHECK`) |
+| **6. Anonymous marketplace viewing** | Unauthenticated `SELECT * FROM public.products WHERE is_active = true` | **PERMITTED** (active, non-archived listings only; executes without calling `is_admin()`) |
+| **7. Anonymous viewing seller emails** | Unauthenticated `SELECT email FROM public.profiles` | **REJECTED** (zero access to `profiles` for anon) |
+| **8. Cross-seller file deletion** | Seller A attempting to delete `/storage/v1/object/product-images/seller-B/...` | **REJECTED** by storage RLS policy (`auth.uid()` does not match path) |
+| **9. Demoted seller uploading storage file** | Former seller demoted to `buyer` attempts upload | **REJECTED** (violates `public.is_seller()` in storage policy) |
+| **10. Administrator image moderation** | Logged in as `admin`, attempt `DELETE FROM storage.objects WHERE bucket_id = 'product-images' AND name = 'seller-B/prod-1/photo.jpg'` | **PERMITTED** (independent `public.is_admin()` branch allows cross-folder moderation) |

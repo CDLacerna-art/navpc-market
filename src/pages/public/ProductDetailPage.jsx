@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ALL_PRODUCTS, DEMO_CATEGORIES } from '../../utils/demoData';
+import { productService } from '../../services/productService';
 import { formatPHP } from '../../utils/currency';
 import { useCart } from '../../context/CartContext';
 import Button from '../../components/common/Button';
@@ -38,15 +39,48 @@ export default function ProductDetailPage() {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   // Scroll to top when product ID changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setQuantity(1);
     setImgError(false);
+
+    async function loadProduct() {
+      // 1. Check demo catalog
+      const demoProd = ALL_PRODUCTS.find((p) => p.id === productId);
+      if (demoProd) {
+        setProduct(demoProd);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Check live / student products
+      try {
+        const liveProducts = await productService.getPublicProducts();
+        const found = liveProducts.find((p) => p.id === productId);
+        setProduct(found || null);
+      } catch (err) {
+        console.warn('Error fetching live product details:', err);
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProduct();
   }, [productId]);
 
-  // Find product from demo catalog
-  const product = ALL_PRODUCTS.find((p) => p.id === productId);
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-24 text-center space-y-3">
+        <div className="w-8 h-8 mx-auto border-2 border-brand-blue border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs text-content-muted">Loading product details...</p>
+      </div>
+    );
+  }
 
   // If product not found
   if (!product) {
@@ -218,16 +252,20 @@ export default function ProductDetailPage() {
               >
                 {product.category}
               </Link>
-              <div
-                className="flex items-center gap-1.5 text-amber-600 font-semibold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-xs"
-                title="Sample demonstration rating"
-              >
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                <span>{product.rating.toFixed(1)}</span>
-                <span className="text-content-subtle font-normal">
-                  ({product.reviewsCount} sample reviews)
-                </span>
-              </div>
+              {product.rating != null ? (
+                <div
+                  className="flex items-center gap-1.5 text-amber-600 font-semibold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-xs"
+                  title="Sample demonstration rating"
+                >
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <span>{typeof product.rating === 'number' ? product.rating.toFixed(1) : product.rating}</span>
+                  <span className="text-content-subtle font-normal">
+                    ({product.reviewsCount} sample reviews)
+                  </span>
+                </div>
+              ) : (
+                <Badge variant="primary" size="xs">Live Student Listing</Badge>
+              )}
             </div>
 
             {/* Product Title */}
@@ -276,29 +314,33 @@ export default function ProductDetailPage() {
               </p>
             </div>
 
-            {/* Demo Seller Profile Card */}
+            {/* Seller Profile Card */}
             <div className="p-4 bg-blue-50/60 border border-blue-200/80 rounded-xl space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-brand-dark uppercase tracking-wider flex items-center gap-1.5">
                   <Store className="w-4 h-4 text-brand-blue" />
-                  Demo Seller Profile
+                  {product.isLive ? 'Student Seller Profile' : 'Demo Seller Profile'}
                 </span>
-                <span className="text-[11px] text-content-muted">Sample ID: {product.seller.studentId}</span>
+                {product.seller?.studentId && (
+                  <span className="text-[11px] text-content-muted">Sample ID: {product.seller.studentId}</span>
+                )}
               </div>
 
               <div className="flex items-center gap-3.5">
                 <InitialsAvatar
-                  name={product.seller.name}
+                  name={product.seller?.name || 'Seller'}
                   size="lg"
                   className="ring-2 ring-white"
                 />
                 <div className="space-y-0.5">
                   <h4 className="text-sm font-bold text-content-heading">
-                    {product.seller.name}
+                    {product.seller?.name || 'Student Merchant'}
                   </h4>
-                  <p className="text-xs text-content-muted">{product.seller.program}</p>
+                  <p className="text-xs text-content-muted">{product.seller?.program || 'Enrolled NPC Student'}</p>
                   <p className="text-[11px] text-brand-dark font-medium">
-                    ★ {product.seller.rating} sample rating • {product.seller.salesCount} sample campus orders (Demonstration Record)
+                    {product.isLive
+                      ? 'Verified Enrolled NPC Student Merchant'
+                      : `★ ${product.seller?.rating} sample rating • ${product.seller?.salesCount} sample campus orders (Demonstration Record)`}
                   </p>
                 </div>
               </div>

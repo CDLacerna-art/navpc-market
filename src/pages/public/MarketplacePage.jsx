@@ -6,6 +6,7 @@ import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import Card from '../../components/common/Card';
 import { ALL_PRODUCTS, DEMO_CATEGORIES } from '../../utils/demoData';
+import { productService } from '../../services/productService';
 import { formatPHP } from '../../utils/currency';
 import {
   Search,
@@ -48,6 +49,25 @@ export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [liveProducts, setLiveProducts] = useState([]);
+
+  useEffect(() => {
+    async function loadLiveProducts() {
+      try {
+        const live = await productService.getPublicProducts();
+        if (live && live.length > 0) {
+          setLiveProducts(live);
+        }
+      } catch (e) {
+        console.warn('Could not load live student products:', e);
+      }
+    }
+    loadLiveProducts();
+  }, []);
+
+  const allProducts = useMemo(() => {
+    return [...liveProducts, ...ALL_PRODUCTS];
+  }, [liveProducts]);
 
   // URL state synchronization
   const queryParam = searchParams.get('q') || '';
@@ -104,7 +124,7 @@ export default function MarketplacePage() {
 
   // Filter and sort the complete catalog
   const filteredProducts = useMemo(() => {
-    return ALL_PRODUCTS.filter((product) => {
+    return allProducts.filter((product) => {
       // 1. Search filter: search in title, description, category, and seller name
       if (queryParam) {
         const q = queryParam.toLowerCase();
@@ -237,12 +257,12 @@ export default function MarketplacePage() {
 
   // Count items per category in the full catalog
   const categoryCounts = useMemo(() => {
-    const counts = { all: ALL_PRODUCTS.length };
-    ALL_PRODUCTS.forEach((p) => {
+    const counts = { all: allProducts.length };
+    allProducts.forEach((p) => {
       counts[p.categorySlug] = (counts[p.categorySlug] || 0) + 1;
     });
     return counts;
-  }, []);
+  }, [allProducts]);
 
   const getCategoryIcon = (slug) => {
     switch (slug) {

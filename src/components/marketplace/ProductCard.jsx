@@ -100,11 +100,17 @@ export default function ProductCard({
             <span className="font-semibold text-brand-blue uppercase tracking-wider text-[10px] leading-tight">
               {product.category}
             </span>
-            <div className="flex items-center gap-1 font-medium text-amber-600 shrink-0 text-[10px]" title="Sample demonstration rating">
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              <span>{product.rating.toFixed(1)}</span>
-              <span className="text-[10px] text-content-subtle font-normal">({product.reviewsCount})</span>
-            </div>
+            {product.rating != null ? (
+              <div className="flex items-center gap-1 font-medium text-amber-600 shrink-0 text-[10px]" title="Sample demonstration rating">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                <span>{typeof product.rating === 'number' ? product.rating.toFixed(1) : product.rating}</span>
+                <span className="text-[10px] text-content-subtle font-normal">({product.reviewsCount || 0})</span>
+              </div>
+            ) : (
+              <span className="text-[9px] bg-blue-50 text-brand-blue px-1.5 py-0.5 rounded font-semibold shrink-0">
+                Student Listing
+              </span>
+            )}
           </div>
 
           {/* Product Title */}
@@ -117,16 +123,16 @@ export default function ProductCard({
           {/* Seller Snapshot */}
           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-surface-border/60">
             <InitialsAvatar
-              name={product.seller.name}
+              name={product.seller?.name || 'Seller'}
               size="xs"
               className="ring-1 ring-surface-border"
             />
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-medium text-content-heading truncate leading-tight">
-                {product.seller.name} <span className="text-[10px] text-brand-blue font-normal">(Demo Seller)</span>
+                {product.seller?.name || 'Student Merchant'} <span className="text-[10px] text-brand-blue font-normal">{product.isLive ? '(Student Seller)' : '(Demo Seller)'}</span>
               </p>
               <p className="text-[10px] text-content-muted truncate leading-tight">
-                {product.seller.program}
+                {product.seller?.program || 'Enrolled NPC Student'}
               </p>
             </div>
           </div>
